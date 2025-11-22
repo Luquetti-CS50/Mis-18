@@ -2,98 +2,113 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"
+    />
     <title>Mis 18 - Invitados</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
               neon: {
-                blue: '#00C6FF',
-                dark: '#050505',
-                card: '#0A0A0A',
-                text: '#CCCCCC'
-              }
+                blue: "#00C6FF",
+                dark: "#050505",
+                card: "#0A0A0A",
+                text: "#CCCCCC",
+              },
             },
             fontFamily: {
-              sans: ['Outfit', 'sans-serif'],
+              sans: ["Outfit", "sans-serif"],
             },
             animation: {
-              'shimmer': 'shimmer 8s linear infinite',
-              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'scroll': 'scroll 20s linear infinite',
+              shimmer: "shimmer 8s linear infinite",
+              "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              scroll: "scroll 20s linear infinite",
             },
             keyframes: {
               shimmer: {
-                '0%': { backgroundPosition: '0% 50%' },
-                '50%': { backgroundPosition: '100% 50%' },
-                '100%': { backgroundPosition: '0% 50%' },
+                "0%": { backgroundPosition: "0% 50%" },
+                "50%": { backgroundPosition: "100% 50%" },
+                "100%": { backgroundPosition: "0% 50%" },
               },
               metallicFlow: {
-                '0%': { backgroundPosition: '0% 50%' },
-                '50%': { backgroundPosition: '100% 50%' },
-                '100%': { backgroundPosition: '0% 50%' },
+                "0%": { backgroundPosition: "0% 50%" },
+                "50%": { backgroundPosition: "100% 50%" },
+                "100%": { backgroundPosition: "0% 50%" },
               },
               scroll: {
-                '0%': { transform: 'translateX(0)' },
-                '100%': { transform: 'translateX(-50%)' },
-              }
-            }
-          }
-        }
-      }
+                "0%": { transform: "translateX(0)" },
+                "100%": { transform: "translateX(-50%)" },
+              },
+            },
+          },
+        },
+      };
     </script>
     <style>
       body {
         background-color: #050505;
-        color: #FFFFFF;
+        color: #ffffff;
         overflow-x: hidden;
       }
-      /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #0A0A0A; 
+        background: #0a0a0a;
       }
       ::-webkit-scrollbar-thumb {
-        background: #333; 
+        background: #333;
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #00C6FF; 
+        background: #00c6ff;
       }
-      /* Req 1: Animación de borde plateado lenta y suave */
       .silver-border-gradient-animated {
-        background: linear-gradient(270deg, #555555, #D9D9D9, #FFFFFF, #BEBEBE, #777777, #FFFFFF, #D9D9D9, #555555);
+        background: linear-gradient(
+          270deg,
+          #555555,
+          #d9d9d9,
+          #ffffff,
+          #bebebe,
+          #777777,
+          #ffffff,
+          #d9d9d9,
+          #555555
+        );
         background-size: 400% 400%;
         animation: metallicFlow 15s ease infinite;
       }
-      
-      /* Utilitario para el Bottom Nav seguro en iOS */
       .pb-safe {
         padding-bottom: env(safe-area-inset-bottom);
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
-    "recharts": "https://aistudiocdn.com/recharts@^3.4.1"
-  }
-}
-</script>
-</head>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://aistudiocdn.com/react@^19.2.0",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+          "react/": "https://aistudiocdn.com/react@^19.2.0/",
+          "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+          "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+          "recharts": "https://aistudiocdn.com/recharts@^3.4.1"
+        }
+      }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
+
+    <!-- ESTO FALTABA: entrada de tu app -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
