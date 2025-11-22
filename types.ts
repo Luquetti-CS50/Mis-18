@@ -2,7 +2,6 @@ export interface User {
   id: string;
   name: string;
   normalizedName: string;
-  groupName?: string; // e.g., "Familia", "Colegio"
   tableId?: string | null;
   musicComment?: string;
   isAdmin?: boolean;
@@ -22,6 +21,7 @@ export interface Song {
   platform: 'spotify' | 'youtube';
   thumbnailUrl: string;
   suggestedByUserId: string;
+  platformUrl?: string; // Nuevo campo para link real
 }
 
 export interface WishlistItem {

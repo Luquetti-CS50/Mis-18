@@ -9,9 +9,10 @@ interface Props {
 export const NeonCard: React.FC<Props> = ({ children, className = "", onClick }) => (
   <div 
     onClick={onClick}
-    className={`relative group rounded-xl p-[1px] silver-border-gradient overflow-hidden ${onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''} ${className}`}
+    className={`relative group rounded-xl p-[1px] silver-border-gradient-animated overflow-hidden ${onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''} ${className}`}
   >
-    <div className="bg-[#0A0A0A] w-full h-full rounded-xl p-4 relative z-10">
+    {/* Se eliminó h-full para permitir que la tarjeta colapse según el contenido (height auto) */}
+    <div className="bg-[#0A0A0A] w-full rounded-xl p-4 relative z-10">
       {children}
     </div>
   </div>
@@ -20,7 +21,7 @@ export const NeonCard: React.FC<Props> = ({ children, className = "", onClick })
 export const NeonButton: React.FC<{ 
   children: React.ReactNode; 
   onClick?: () => void; 
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'success';
   fullWidth?: boolean;
   className?: string;
   disabled?: boolean;
@@ -29,7 +30,8 @@ export const NeonButton: React.FC<{
   const variants = {
     primary: "bg-black border border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black shadow-[0_0_10px_rgba(0,198,255,0.3)]",
     secondary: "bg-[#111] text-gray-300 border border-gray-700 hover:border-white hover:text-white",
-    danger: "bg-black border border-red-500 text-red-500 hover:bg-red-500 hover:text-black"
+    danger: "bg-black border border-red-500 text-red-500 hover:bg-red-500 hover:text-black",
+    success: "bg-black border border-green-500 text-green-500 hover:bg-green-500 hover:text-black"
   };
 
   return (

@@ -25,10 +25,8 @@
             },
             animation: {
               'shimmer': 'shimmer 8s linear infinite',
-              'rain-1': 'rain 15s linear infinite',
-              'rain-2': 'rain 25s linear infinite',
-              'rain-3': 'rain 20s linear infinite',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'scroll': 'scroll 20s linear infinite',
             },
             keyframes: {
               shimmer: {
@@ -36,9 +34,14 @@
                 '50%': { backgroundPosition: '100% 50%' },
                 '100%': { backgroundPosition: '0% 50%' },
               },
-              rain: {
-                '0%': { transform: 'translateX(100%)' },
-                '100%': { transform: 'translateX(-100vw)' }, // Adjust based on screen
+              metallicFlow: {
+                '0%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+                '100%': { backgroundPosition: '0% 50%' },
+              },
+              scroll: {
+                '0%': { transform: 'translateX(0)' },
+                '100%': { transform: 'translateX(-50%)' },
               }
             }
           }
@@ -65,10 +68,16 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #00C6FF; 
       }
-      .silver-border-gradient {
-        background: linear-gradient(90deg, #D9D9D9, #FFFFFF, #BEBEBE, #777777, #FFFFFF, #D9D9D9);
-        background-size: 300% 100%;
-        animation: shimmer 10s linear infinite;
+      /* Req 1: Animación de borde plateado lenta y suave */
+      .silver-border-gradient-animated {
+        background: linear-gradient(270deg, #555555, #D9D9D9, #FFFFFF, #BEBEBE, #777777, #FFFFFF, #D9D9D9, #555555);
+        background-size: 400% 400%;
+        animation: metallicFlow 15s ease infinite;
+      }
+      
+      /* Utilitario para el Bottom Nav seguro en iOS */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
       }
     </style>
   <script type="importmap">

@@ -4,20 +4,20 @@ import {
   Home as HomeIcon, 
   Music, 
   Gift, 
-  Disc, 
   Users, 
   LogOut, 
   Plus, 
   Check, 
   Lock, 
   Unlock,
-  BarChart2,
-  Search,
-  PlayCircle
+  PlayCircle,
+  Save,
+  Shield,
+  ExternalLink
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
-import { User, Table, Song, WishlistItem, MusicPreference } from './types';
-import { db, normalizeName } from './services/db';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import { User, Table, Song, WishlistItem } from './types';
+import { db, normalizeName, VALID_GENRES } from './services/db';
 import { NeonCard, NeonButton, Badge, PageTitle } from './components/UI';
 
 // --- HOOKS FOR DATA SYNC ---
@@ -31,7 +31,53 @@ function useData<T>(getData: () => T, eventKey: string): T {
   return data;
 }
 
+// --- UTILS ---
+// Req 4: Función de cuenta regresiva
+const calculateTimeLeft = () => {
+  const birthday = new Date('2025-12-27T00:00:00');
+  const now = new Date();
+  const difference = +birthday - +now;
+
+  let timeLeft = {};
+
+  if (difference > 0) {
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((difference / 1000 / 60) % 60);
+    const seconds = Math.floor((difference / 1000) % 60);
+    
+    timeLeft = { days, hours, minutes, seconds, total: difference };
+  } else {
+    timeLeft = { total: 0 };
+  }
+  return timeLeft;
+};
+
 // --- COMPONENTS ---
+
+const BirthdayCountdown = () => {
+  const [timeLeft, setTimeLeft] = useState<any>(calculateTimeLeft());
+
+  useEffect(() => {
+    const intervalTime = timeLeft.days < 1 ? 1000 : 60000;
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, intervalTime);
+    return () => clearInterval(timer);
+  }, [timeLeft.days]);
+
+  if (timeLeft.total <= 0) return <p className="text-neon-blue font-bold animate-pulse">¡ES HOY! 🎉</p>;
+
+  if (timeLeft.days >= 1) {
+    return <p className="text-neon-text mt-1">Faltan <span className="text-white font-bold">{timeLeft.days} días</span> para la fiesta</p>;
+  }
+
+  return (
+    <p className="text-neon-blue font-mono mt-1 text-xl">
+      {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+    </p>
+  );
+};
 
 const Navbar = () => {
   const location = useLocation();
@@ -45,7 +91,7 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-black/90 backdrop-blur-md border-t border-[#333] z-50 pb-safe">
+    <div className="fixed bottom-0 left-0 w-full bg-black/95 backdrop-blur-md border-t border-[#333] z-50 pb-safe">
       <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
@@ -69,7 +115,6 @@ const Navbar = () => {
 
 // --- SCREENS ---
 
-// 1. LOGIN
 const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -81,7 +126,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
     setName(val);
     setError('');
     
-    if (val.length > 1) {
+    if (val.length >= 1) {
       const norm = normalizeName(val);
       const matches = allUsers
         .filter(u => normalizeName(u.name).includes(norm))
@@ -105,7 +150,6 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-black relative overflow-hidden">
-      {/* Background decoration */}
       <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-neon-blue opacity-5 rounded-full blur-[100px]" />
       
       <div className="w-full max-w-md z-10">
@@ -128,11 +172,11 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
                 className="w-full bg-[#111] border border-[#333] rounded-lg p-4 text-white focus:border-neon-blue focus:outline-none transition-colors placeholder-gray-600"
               />
               {suggestions.length > 0 && (
-                <div className="absolute top-full left-0 w-full bg-[#1a1a1a] border border-[#333] mt-1 rounded-lg overflow-hidden z-20">
+                <div className="absolute top-full left-0 w-full bg-[#1a1a1a] border border-[#333] mt-1 rounded-lg overflow-hidden z-20 shadow-xl">
                   {suggestions.map(s => (
                     <div 
                       key={s} 
-                      className="p-3 hover:bg-[#222] cursor-pointer text-gray-300"
+                      className="p-3 hover:bg-[#222] cursor-pointer text-gray-300 border-b border-gray-800 last:border-0"
                       onClick={() => { setName(s); setSuggestions([]); }}
                     >
                       {s}
@@ -158,24 +202,38 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
 const HomeScreen = ({ user }: { user: User }) => {
   const confirmedUsers = useData(() => db.getUsers().filter(u => u.hasLoggedIn), 'users');
   const [showAllGuests, setShowAllGuests] = useState(false);
-
-  // Pending tasks logic
-  const pendingTasks = [];
-  if (!user.musicComment) pendingTasks.push({ type: 'music', title: '🎵 DJ en proceso...', desc: '¡No nos dijiste qué música te gusta!', link: '/music' });
-  if (!user.tableId) pendingTasks.push({ type: 'table', title: '🍽️ Tu lugar en la mesa', desc: 'Todavía no elegiste mesa.', link: '/tables' });
-
   const navigate = useNavigate();
+
+  const myPrefs = useData(() => db.getPreferences(), 'prefs').filter(p => p.userId === user.id);
+  const mySongs = useData(() => db.getSongs(), 'songs').filter(s => s.suggestedByUserId === user.id);
+
+  const pendingTasks = [];
+  if (!user.musicComment && myPrefs.length === 0 && mySongs.length === 0) {
+    pendingTasks.push({ type: 'music', title: '🎵 DJ en proceso...', desc: '¡No nos dijiste qué música te gusta!', link: '/music' });
+  }
+  if (!user.tableId) {
+    pendingTasks.push({ type: 'table', title: '🍽️ Tu lugar en la mesa', desc: 'Todavía no elegiste mesa.', link: '/tables' });
+  }
 
   return (
     <div className="pb-24 pt-8 px-4">
-      <header className="mb-8 flex justify-between items-end">
+      <header className="mb-8 flex justify-between items-start">
         <div>
           <h1 className="text-4xl font-bold text-white">Hola, <span className="text-neon-blue">{user.name.split(' ')[0]}</span> 👋</h1>
-          <p className="text-neon-text mt-1">Faltan 15 días para la fiesta</p>
+          <BirthdayCountdown />
         </div>
+        {/* Req Admin: Botón visible para ir al panel */}
+        {user.isAdmin && (
+          <button 
+            onClick={() => navigate('/admin')}
+            className="bg-[#111] p-2 rounded-lg border border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black transition-colors"
+            title="Panel Admin"
+          >
+            <Shield size={20} />
+          </button>
+        )}
       </header>
 
-      {/* Pending Tasks */}
       {pendingTasks.length > 0 && (
         <div className="mb-8 space-y-4">
           <h2 className="text-lg font-semibold text-white mb-2">Pendientes</h2>
@@ -198,49 +256,39 @@ const HomeScreen = ({ user }: { user: User }) => {
         </div>
       )}
 
-      {/* Guest Rain Carousel */}
       <div className="mt-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-white">Invitados Confirmados ({confirmedUsers.length})</h2>
           <button onClick={() => setShowAllGuests(true)} className="text-xs text-neon-blue border border-neon-blue px-2 py-1 rounded">VER TODOS</button>
         </div>
         
-        <NeonCard onClick={() => setShowAllGuests(true)} className="h-48 relative overflow-hidden !bg-black">
-            {/* Rain Effect Container */}
-            <div className="absolute inset-0 overflow-hidden">
-               {confirmedUsers.map((u, i) => {
-                 const row = i % 4; // 4 rows
-                 const duration = 15 + (i % 5) * 5; // Variable speeds
-                 const delay = (i % 10) * -2;
-                 return (
-                   <div 
-                      key={u.id}
-                      className="absolute whitespace-nowrap text-sm text-gray-400 border border-gray-800 rounded-full px-3 py-1 bg-[#050505]"
-                      style={{
-                        top: `${10 + row * 20}%`,
-                        animation: `rain ${duration}s linear infinite`,
-                        animationDelay: `${delay}s`,
-                        left: '100%' // Start off screen
-                      }}
-                   >
-                     {u.name}
-                   </div>
-                 )
-               })}
-               {confirmedUsers.length === 0 && (
-                 <div className="absolute inset-0 flex items-center justify-center text-gray-600">
-                   Aún no hay confirmados... ¡sé el primero!
-                 </div>
-               )}
-            </div>
-            <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-black to-transparent z-10" />
-            <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-black to-transparent z-10" />
+        {/* Req Home: Carrusel Marquee (Scroll infinito real) */}
+        <NeonCard onClick={() => setShowAllGuests(true)} className="h-24 flex items-center !bg-black !p-0">
+          <div className="w-full overflow-hidden relative h-full flex items-center mask-linear-fade">
+             {confirmedUsers.length === 0 ? (
+                <p className="w-full text-center text-gray-500 text-sm">Aún no hay nadie...</p>
+             ) : (
+                <div className="flex animate-scroll whitespace-nowrap w-max hover:[animation-play-state:paused]">
+                  {/* Duplicamos la lista para efecto infinito */}
+                  {[...confirmedUsers, ...confirmedUsers, ...confirmedUsers].map((u, i) => (
+                    <div 
+                      key={`${u.id}-${i}`} 
+                      className="mx-4 flex flex-col items-center justify-center min-w-[80px]"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 flex items-center justify-center mb-1 text-xs font-bold text-gray-400">
+                        {u.name.charAt(0)}
+                      </div>
+                      <span className="text-xs text-gray-400">{u.name.split(' ')[0]}</span>
+                    </div>
+                  ))}
+                </div>
+             )}
+          </div>
         </NeonCard>
       </div>
 
-      {/* Full Guest List Modal */}
       {showAllGuests && (
-        <div className="fixed inset-0 bg-black z-[60] p-6 flex flex-col">
+        <div className="fixed inset-0 bg-black z-[60] p-6 flex flex-col animate-fade-in">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-white">Lista de Invitados</h2>
             <button onClick={() => setShowAllGuests(false)} className="text-neon-blue text-xl font-bold">✕</button>
@@ -251,7 +299,6 @@ const HomeScreen = ({ user }: { user: User }) => {
                 .map(u => (
                   <div key={u.id} className="flex items-center justify-between p-3 border-b border-gray-800">
                     <span className="text-white">{u.name}</span>
-                    {u.groupName && <span className="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded">{u.groupName}</span>}
                   </div>
                 ))}
           </div>
@@ -265,30 +312,40 @@ const HomeScreen = ({ user }: { user: User }) => {
 const MusicScreen = ({ user }: { user: User }) => {
   const [comment, setComment] = useState(user.musicComment || '');
   const [tagInput, setTagInput] = useState('');
+  const [tagError, setTagError] = useState('');
+  
   const [songQuery, setSongQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
+
   const preferences = useData(() => db.getPreferences(), 'prefs');
   const songs = useData(() => db.getSongs(), 'songs');
-  const allUsers = useData(() => db.getUsers(), 'users'); // To force chart refresh if needed
 
-  // 1. Comment Auto-save
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (comment !== user.musicComment) {
-        db.updateUser({ ...user, musicComment: comment });
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [comment, user]);
+  const handleSaveComment = () => {
+    db.updateUser({ ...user, musicComment: comment });
+    alert('¡Comentario guardado! 💾');
+  };
 
-  // 2. Tags
   const myPrefs = preferences.filter(p => p.userId === user.id);
   const handleAddTag = () => {
-    if (!tagInput.trim()) return;
-    db.addPreference({ id: Date.now().toString(), userId: user.id, genre: tagInput.trim() });
+    setTagError('');
+    const val = tagInput.trim().toLowerCase();
+    if (!val) return;
+
+    if (myPrefs.some(p => p.genre === val)) {
+      setTagError('¡Ya agregaste este género!');
+      return;
+    }
+
+    if (!VALID_GENRES.includes(val)) {
+      setTagError(`Género no reconocido. Probá: ${VALID_GENRES.slice(0,3).join(', ')}...`);
+      return;
+    }
+
+    db.addPreference({ id: Date.now().toString(), userId: user.id, genre: val });
     setTagInput('');
   };
 
-  // 3. Chart Data
   const chartData = useMemo(() => {
     const counts: Record<string, number> = {};
     preferences.forEach(p => {
@@ -297,97 +354,147 @@ const MusicScreen = ({ user }: { user: User }) => {
     });
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+      .sort((a, b) => b.value - a.value);
   }, [preferences]);
 
-  // 4. Add Song Mock
-  const handleAddSong = () => {
-    if (!songQuery) return;
-    // Mock "fetching" info
-    const newSong: Song = {
-      id: Date.now().toString(),
-      title: songQuery,
-      artist: 'Artista Desconocido', // Mock
-      platform: Math.random() > 0.5 ? 'spotify' : 'youtube',
-      thumbnailUrl: `https://picsum.photos/100/100?random=${Date.now()}`,
-      suggestedByUserId: user.id
-    };
-    db.addSong(newSong);
+  // Req Musica: Búsqueda "Real" y no inventada
+  useEffect(() => {
+    if (songQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
+      // Llamada a la función "mock API"
+      const results = await db.searchSongs(songQuery);
+      setSearchResults(results);
+      setIsSearching(false);
+    }, 600);
+
+    return () => clearTimeout(timeoutId);
+  }, [songQuery]);
+
+  const handleSelectSong = (song: Song) => {
+    db.addSong({ ...song, suggestedByUserId: user.id });
     setSongQuery('');
+    setSearchResults([]);
   };
 
   return (
     <div className="pb-24 pt-8 px-4">
       <PageTitle title="DJ Zone 🎧" subtitle="Ayudanos a armar la playlist perfecta" />
 
-      {/* Section 1: Comment */}
       <section className="mb-8">
-        <h3 className="text-white font-semibold mb-2">¿Qué querés escuchar? (Comentario libre)</h3>
+        <h3 className="text-white font-semibold mb-2">¿Qué querés escuchar?</h3>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:border-neon-blue outline-none h-24 text-sm"
+          className="w-full bg-[#111] border border-[#333] rounded-lg p-3 text-white focus:border-neon-blue outline-none h-24 text-sm mb-2"
           placeholder="Ej: Mucho reggaeton viejo, nada de electrónica..."
         />
+        <NeonButton onClick={handleSaveComment} variant="secondary" className="!py-2 !text-xs w-full">
+          <Save size={14} /> GUARDAR COMENTARIO
+        </NeonButton>
       </section>
 
-      {/* Section 2: Genres */}
       <section className="mb-8">
         <h3 className="text-white font-semibold mb-2">Géneros Favoritos</h3>
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-1">
           <input
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             className="flex-1 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white outline-none"
-            placeholder="Ej: Cumbia, Techno..."
+            placeholder="Ej: cumbia, rock..."
             onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
           />
           <NeonButton onClick={handleAddTag} className="!py-2">
             <Plus size={18} />
           </NeonButton>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {tagError && <p className="text-red-400 text-xs mb-2">{tagError}</p>}
+        <div className="flex flex-wrap gap-2 mt-2">
           {myPrefs.map(p => (
             <Badge key={p.id} onRemove={() => db.removePreference(p.id)}>{p.genre}</Badge>
           ))}
         </div>
       </section>
 
-      {/* Section 3: Chart */}
       <section className="mb-8">
         <h3 className="text-white font-semibold mb-4">Tendencias de la Fiesta 📊</h3>
-        <div className="h-48 w-full">
-           <ResponsiveContainer width="100%" height="100%">
-             <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 30 }}>
-               <XAxis type="number" hide />
-               <YAxis dataKey="name" type="category" width={70} tick={{fill: '#fff', fontSize: 10}} />
-               <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#000', borderColor: '#333' }}
-                  itemStyle={{ color: '#00C6FF' }}
-               />
-               <Bar dataKey="value" fill="#00C6FF" radius={[0, 4, 4, 0]}>
-                 {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={`rgba(0, 198, 255, ${1 - index * 0.15})`} />
-                 ))}
-               </Bar>
-             </BarChart>
-           </ResponsiveContainer>
+        <div className="h-64 w-full overflow-x-auto">
+           <div className="min-w-[400px] h-full">
+             <ResponsiveContainer width="100%" height="100%">
+               <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 30, top: 10, bottom: 10 }}>
+                 <CartesianGrid horizontal={false} stroke="#333" />
+                 <XAxis type="number" hide />
+                 <YAxis dataKey="name" type="category" width={80} tick={{fill: '#fff', fontSize: 10}} interval={0} />
+                 <RechartsTooltip 
+                    cursor={{fill: 'transparent'}}
+                    contentStyle={{ backgroundColor: '#000', borderColor: '#333' }}
+                    itemStyle={{ color: '#00C6FF' }}
+                    formatter={(value: number) => [value, 'Votos']}
+                 />
+                 <Bar dataKey="value" fill="#00C6FF" radius={[0, 4, 4, 0]} barSize={20}>
+                   {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`rgba(0, 198, 255, ${Math.max(0.3, 1 - index * 0.1)})`} />
+                   ))}
+                 </Bar>
+               </BarChart>
+             </ResponsiveContainer>
+           </div>
         </div>
       </section>
 
-      {/* Section 4: Songs */}
       <section>
         <h3 className="text-white font-semibold mb-2">Temazos infaltables</h3>
-        <div className="flex gap-2 mb-4">
+        <div className="relative mb-4">
            <input 
              value={songQuery}
              onChange={e => setSongQuery(e.target.value)}
-             placeholder="Buscar canción..."
-             className="flex-1 bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white outline-none"
+             placeholder="Buscar canción o artista..."
+             className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-3 text-white outline-none focus:border-neon-blue"
            />
-           <NeonButton onClick={handleAddSong} className="!py-2">Agregar</NeonButton>
+           {isSearching && <div className="absolute right-3 top-3 text-neon-blue animate-spin">⌛</div>}
+           
+           {searchResults.length > 0 ? (
+             <div className="absolute top-full left-0 w-full bg-[#1a1a1a] border border-[#333] z-20 rounded-b-lg max-h-60 overflow-y-auto shadow-2xl">
+               {searchResults.map(res => (
+                 <div key={res.id} className="flex items-center p-3 hover:bg-[#222] border-b border-gray-800">
+                    <img src={res.thumbnailUrl} className="w-10 h-10 rounded mr-3 object-cover"/>
+                    <div className="flex-1 min-w-0 mr-2">
+                      <p className="text-white text-sm font-bold truncate">{res.title}</p>
+                      <p className="text-xs text-gray-400 truncate">{res.artist}</p>
+                    </div>
+                    
+                    {/* Enlace funcional para escuchar */}
+                    {res.platformUrl && (
+                      <a 
+                        href={res.platformUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-2 text-gray-400 hover:text-neon-blue"
+                        title="Escuchar preview"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
+                    
+                    <button onClick={() => handleSelectSong(res)} className="p-2 text-neon-blue hover:bg-neon-blue/10 rounded-full">
+                      <Plus size={18}/>
+                    </button>
+                 </div>
+               ))}
+             </div>
+           ) : (
+             songQuery.length >= 2 && !isSearching && (
+                <div className="absolute top-full left-0 w-full bg-[#1a1a1a] border border-[#333] z-20 p-3 text-center text-gray-500 text-sm">
+                  No encontramos esa canción 😢
+                </div>
+             )
+           )}
         </div>
+
         <div className="space-y-3">
           {songs.map(song => (
             <div key={song.id} className="flex items-center bg-[#0A0A0A] border border-gray-800 p-2 rounded-lg">
@@ -412,7 +519,6 @@ const TablesScreen = ({ user }: { user: User }) => {
   const tables = useData(() => db.getTables(), 'tables');
   const allUsers = useData(() => db.getUsers(), 'users');
   
-  // Compute occupancy
   const tableData = useMemo(() => {
     return tables.map(t => {
       const occupants = allUsers.filter(u => u.tableId === t.id);
@@ -424,29 +530,9 @@ const TablesScreen = ({ user }: { user: User }) => {
     db.updateUser({ ...user, tableId });
   };
 
-  const handleLeave = () => {
-    db.updateUser({ ...user, tableId: null });
-  };
-
   return (
     <div className="pb-24 pt-8 px-4">
       <PageTitle title="Mesas 🍽️" subtitle="Elegí dónde sentarte" />
-
-      {user.tableId ? (
-         <div className="mb-8">
-           <div className="bg-neon-blue/10 border border-neon-blue p-4 rounded-lg flex justify-between items-center">
-             <div>
-               <p className="text-neon-blue font-bold">Estás en la {tables.find(t => t.id === user.tableId)?.name}</p>
-               <p className="text-xs text-gray-400">¿Querés cambiarte?</p>
-             </div>
-             <button onClick={handleLeave} className="text-xs bg-black text-white px-3 py-2 rounded border border-gray-700">
-               SALIR
-             </button>
-           </div>
-         </div>
-      ) : (
-        <p className="mb-6 text-gray-400 text-sm">Tocá una mesa para unirte. Máximo 10 por mesa.</p>
-      )}
 
       <div className="space-y-4">
         {tableData.map(table => {
@@ -455,7 +541,8 @@ const TablesScreen = ({ user }: { user: User }) => {
           const occupancyRate = table.occupants.length / table.capacity;
 
           return (
-            <NeonCard key={table.id} className="!p-0" onClick={() => !isFull && !isMyTable && handleJoin(table.id)}>
+            // Req Mesas: Height auto permitido gracias al cambio en UI.tsx
+            <NeonCard key={table.id} className="!p-0 transition-all duration-500">
               <div className="p-4">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-lg font-bold text-white">{table.name}</h3>
@@ -464,7 +551,6 @@ const TablesScreen = ({ user }: { user: User }) => {
                   </span>
                 </div>
                 
-                {/* Visual Occupancy Bar */}
                 <div className="w-full bg-gray-800 h-2 rounded-full mb-4 overflow-hidden">
                   <div 
                     className={`h-full transition-all duration-500 ${isFull ? 'bg-red-500' : 'bg-neon-blue'}`}
@@ -472,21 +558,33 @@ const TablesScreen = ({ user }: { user: User }) => {
                   />
                 </div>
 
-                {/* Avatars / Names list */}
-                <div className="flex flex-wrap gap-1">
+                {/* Lista vertical que empuja el contenedor */}
+                <div className="flex flex-col gap-2 mb-4">
                   {table.occupants.map(u => (
-                    <span key={u.id} className={`text-xs px-2 py-1 rounded border ${u.id === user.id ? 'bg-neon-blue text-black border-neon-blue' : 'bg-black text-gray-400 border-gray-800'}`}>
-                      {u.name.split(' ')[0]}
-                    </span>
+                    <div key={u.id} className={`flex items-center gap-2 text-sm ${u.id === user.id ? 'text-neon-blue font-bold' : 'text-gray-300'}`}>
+                       <div className="w-1 h-1 bg-current rounded-full" />
+                       {u.name}
+                    </div>
                   ))}
                   {table.occupants.length === 0 && <span className="text-xs text-gray-600 italic">Mesa vacía</span>}
                 </div>
                 
-                {!user.tableId && !isFull && (
-                  <div className="mt-3 text-right">
-                     <span className="text-xs text-neon-blue font-bold">UNIRSE &gt;</span>
-                  </div>
-                )}
+                <div className="mt-3">
+                   {isMyTable ? (
+                     <NeonButton fullWidth disabled variant="secondary" className="opacity-50">
+                        ESTÁS ACÁ
+                     </NeonButton>
+                   ) : (
+                     <NeonButton 
+                        fullWidth 
+                        onClick={() => handleJoin(table.id)} 
+                        disabled={isFull}
+                        variant={user.tableId ? "secondary" : "primary"}
+                      >
+                        {isFull ? "LLENA" : user.tableId ? "CAMBIARME ACÁ" : "UNIRSE"}
+                     </NeonButton>
+                   )}
+                </div>
               </div>
             </NeonCard>
           );
@@ -496,19 +594,20 @@ const TablesScreen = ({ user }: { user: User }) => {
   );
 };
 
-// 5. WISHLIST
 const WishlistScreen = ({ user }: { user: User }) => {
   const items = useData(() => db.getWishlist(), 'wishlist');
 
   const handleToggle = (item: WishlistItem) => {
-    // Validation: Only owner or if free
     if (item.isTaken && item.takenByUserId !== user.id && !user.isAdmin) return;
     db.toggleWishlistItem(item.id, user.id);
   };
 
   return (
     <div className="pb-24 pt-8 px-4">
-      <PageTitle title="Regalos 🎁" subtitle="¡Reservá lo que quieras regalarme!" />
+      <PageTitle 
+        title="Lista de deseos 🎁" 
+        subtitle="¡Por si no sabés qué regalarme, acá podés reservar lo que quieras tanto vos como un grupo con el que se organicen!" 
+      />
 
       <div className="grid grid-cols-2 gap-4">
         {items.map(item => {
@@ -530,9 +629,9 @@ const WishlistScreen = ({ user }: { user: User }) => {
                  <h4 className="text-white text-sm font-medium truncate">{item.name}</h4>
                  <div className="mt-2 flex justify-between items-center">
                     {takenByMe ? (
-                      <span className="text-neon-blue text-xs font-bold flex items-center gap-1"><Check size={12}/> TUYO</span>
+                      <span className="text-neon-blue text-xs font-bold flex items-center gap-1"><Check size={12}/> RESERVADO</span>
                     ) : takenByOther ? (
-                      <span className="text-red-500 text-xs font-bold flex items-center gap-1"><Lock size={12}/> OCUPADO</span>
+                      <span className="text-red-500 text-xs font-bold flex items-center gap-1"><Lock size={12}/> RESERVADO</span>
                     ) : (
                       <span className="text-gray-400 text-xs font-bold flex items-center gap-1"><Unlock size={12}/> DISPONIBLE</span>
                     )}
@@ -552,7 +651,6 @@ const AdminScreen = ({ user }: { user: User }) => {
   const token = query.get('token');
   const users = useData(() => db.getUsers(), 'users');
   
-  // Simple auth check
   if (!user.isAdmin && token !== 'secret123') {
     return <Navigate to="/home" />;
   }
@@ -626,15 +724,12 @@ const App = () => {
     <HashRouter>
       <div className="min-h-screen bg-[#050505] font-sans text-white selection:bg-neon-blue selection:text-black">
         <Routes>
-          {/* Public Route */}
           <Route 
             path="/" 
             element={
               currentUser ? <Navigate to="/home" replace /> : <LoginScreen onLogin={handleLogin} />
             } 
           />
-
-          {/* Protected Routes */}
           {currentUser ? (
             <>
               <Route path="/home" element={<><HomeScreen user={currentUser} /><Navbar /></>} />
@@ -649,7 +744,6 @@ const App = () => {
           )}
         </Routes>
 
-        {/* Logout Helper (Top Right) - Only visible if logged in */}
         {currentUser && (
           <button 
             onClick={handleLogout} 
